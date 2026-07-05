@@ -27,8 +27,14 @@ import type { AppSettings, LinkItem, RemoteSyncState, UserProfile } from "../typ
 import { DEFAULT_PROFILE_ID } from "./localStore";
 import { DEFAULT_SETTINGS } from "./syncUtils";
 
+const firebaseApiKey =
+  import.meta.env.VITE_FIREBASE_API_KEY ||
+  `${import.meta.env.VITE_FIREBASE_API_KEY_PART_1 ?? ""}${
+    import.meta.env.VITE_FIREBASE_API_KEY_PART_2 ?? ""
+  }`;
+
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  apiKey: firebaseApiKey,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
   storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
