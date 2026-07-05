@@ -28,7 +28,7 @@ VITE_FIREBASE_APP_ID=...
 
 Enable Email/Password sign-in in Firebase Authentication. Google sign-in can stay enabled too.
 
-Firebase web config values are public in any browser-built app, including GitHub Pages. Keep real values in `.env.local` for local development and in GitHub Actions repository variables for deployment. Security comes from Firebase Authentication and Firestore rules, not from hiding the web config.
+Firebase web config values are public in any browser-built app, including GitHub Pages. Keep real values in `.env.local` for local development and in GitHub Actions `github-pages` environment secrets for deployment. Security comes from Firebase Authentication and Firestore rules, not from hiding the web config.
 
 Firestore stores links at:
 
