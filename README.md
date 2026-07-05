@@ -75,4 +75,4 @@ On the first signed-in run, existing localStorage links and default categories/t
 npm run build
 ```
 
-The Vite `base` is `./`, so the built app can be served from GitHub Pages subpaths.
+The Vite `base` is `/ai-link-archive/`, so the built app is served correctly from the GitHub Pages project URL.
