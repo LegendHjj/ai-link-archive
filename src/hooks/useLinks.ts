@@ -24,6 +24,7 @@ import {
   saveFirebaseSettings,
   softDeleteFirebaseLink,
 } from "../lib/firebase";
+import { mergeImportedLinks, settingsWithLinks } from "../lib/importExport";
 import {
   DEFAULT_PROFILE_ID,
   createDefaultProfile,
@@ -56,6 +57,20 @@ function titleFromNote(notes: string) {
 
 function maxUpdatedAt(links: LinkItem[]) {
   return links.reduce((max, link) => Math.max(max, link.updatedAt), 0);
+}
+
+function sameStringArray(left: string[], right: string[]) {
+  return left.length === right.length && left.every((item, index) => item === right[index]);
+}
+
+function patchChangesLink(link: LinkItem, patch: Partial<LinkItem>) {
+  return Object.entries(patch).some(([key, value]) => {
+    const current = link[key as keyof LinkItem];
+    if (Array.isArray(current) && Array.isArray(value)) {
+      return !sameStringArray(current, value);
+    }
+    return current !== value;
+  });
 }
 
 function createItem(draft: LinkDraft): LinkItem {
@@ -423,14 +438,30 @@ export function useLinks() {
     return created.length;
   }
 
+  async function importLinks(imported: LinkItem[]) {
+    if (!imported.length) return 0;
+    const nextLinks = mergeImportedLinks(links, imported);
+    const changedLinks = nextLinks.filter((link) => {
+      const current = links.find((item) => item.id === link.id);
+      return !current || link.updatedAt > current.updatedAt;
+    });
+    if (!changedLinks.length && nextLinks.length === links.length) return 0;
+
+    const nextSettings = settingsWithLinks(settings, nextLinks);
+    await persistSettings(nextSettings, nextLinks, changedLinks);
+    return changedLinks.length;
+  }
+
   async function updateLink(id: string, patch: Partial<LinkItem>) {
     const updatedAt = Date.now();
     let changed: LinkItem | undefined;
     const next = links.map((link) => {
       if (link.id !== id) return link;
+      if (!patchChangesLink(link, patch)) return link;
       changed = { ...link, ...patch, updatedAt };
       return changed;
     });
+    if (!changed) return;
     await persistLinks(next, changed ? [changed] : []);
   }
 
@@ -559,6 +590,7 @@ export function useLinks() {
     activeProfileId,
     addLink,
     addMany,
+    importLinks,
     updateLink,
     removeLinks,
     bulkStatus,
