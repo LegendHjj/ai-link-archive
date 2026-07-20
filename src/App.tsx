@@ -130,7 +130,7 @@ function Sidebar({
         <div className="brand-mark">AI</div>
         <div>
           <strong>AI Link Archive</strong>
-          <span>Knowledge cockpit</span>
+          <span>Your AI bookmark hub</span>
         </div>
       </div>
 
