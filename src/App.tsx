@@ -4,6 +4,7 @@ import {
   BookmarkPlus,
   CheckCircle2,
   ChevronDown,
+  ChevronUp,
   Copy,
   Database,
   Download,
@@ -872,6 +873,7 @@ function SettingsModal({
   onClose,
   onAddCategory,
   onDeleteCategory,
+  onReorderCategory,
   onAddTag,
   onDeleteTag,
 }: {
@@ -880,6 +882,7 @@ function SettingsModal({
   onClose: () => void;
   onAddCategory: (category: string) => void;
   onDeleteCategory: (category: string) => void;
+  onReorderCategory: (category: string, direction: "up" | "down") => void;
   onAddTag: (tag: string) => void;
   onDeleteTag: (tag: string) => void;
 }) {
@@ -928,21 +931,39 @@ function SettingsModal({
             <button>Add</button>
           </form>
           <div className="management-list">
-            {settings.categories.map((category) => (
+            {settings.categories.map((category, index) => (
               <div key={category}>
                 <span>
                   <i className={`dot ${toneForCategory(category)}`} />
                   {category}
                 </span>
                 <b>{links.filter((link) => link.category === category).length}</b>
-                <button
-                  className="icon-button"
-                  onClick={() => onDeleteCategory(category)}
-                  title={`Delete ${category}`}
-                  disabled={settings.categories.length <= 1}
-                >
-                  <Trash2 size={16} />
-                </button>
+                <div className="management-row-actions">
+                  <button
+                    className="icon-button"
+                    onClick={() => onReorderCategory(category, "up")}
+                    title={`Move ${category} up`}
+                    disabled={index === 0}
+                  >
+                    <ChevronUp size={16} />
+                  </button>
+                  <button
+                    className="icon-button"
+                    onClick={() => onReorderCategory(category, "down")}
+                    title={`Move ${category} down`}
+                    disabled={index === settings.categories.length - 1}
+                  >
+                    <ChevronDown size={16} />
+                  </button>
+                  <button
+                    className="icon-button"
+                    onClick={() => onDeleteCategory(category)}
+                    title={`Delete ${category}`}
+                    disabled={settings.categories.length <= 1}
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -1065,6 +1086,7 @@ export default function App() {
     bulkStatus,
     addCategory,
     deleteCategory,
+    reorderCategory,
     addTag,
     deleteTag,
     switchProfile,
@@ -1520,6 +1542,7 @@ export default function App() {
           onClose={() => setShowSettings(false)}
           onAddCategory={addCategory}
           onDeleteCategory={deleteCategory}
+          onReorderCategory={reorderCategory}
           onAddTag={addTag}
           onDeleteTag={deleteTag}
         />

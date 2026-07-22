@@ -64,7 +64,7 @@ describe("settingsWithLinks", () => {
       [link({ category: "Research", tags: ["paper"] })],
     );
 
-    expect(settings.categories).toEqual(["Research", "Tools"]);
+    expect(settings.categories).toEqual(["Tools", "Research"]);
     expect(settings.tags).toEqual(["paper", "tools"]);
   });
 });

@@ -395,7 +395,7 @@ export function useLinks() {
         ...settings,
         categories: settings.categories.includes(item.category)
           ? settings.categories
-          : [...settings.categories, item.category].sort((a, b) => a.localeCompare(b)),
+          : [...settings.categories, item.category],
       },
       item.tags,
     );
@@ -513,6 +513,23 @@ export function useLinks() {
     await persistSettings(result.settings, result.links, result.changedLinks);
   }
 
+  async function reorderCategory(category: string, direction: "up" | "down") {
+    const index = settings.categories.indexOf(category);
+    if (index === -1) return;
+    const nextIndex = direction === "up" ? index - 1 : index + 1;
+    if (nextIndex < 0 || nextIndex >= settings.categories.length) return;
+
+    const nextCategories = [...settings.categories];
+    nextCategories[index] = nextCategories[nextIndex];
+    nextCategories[nextIndex] = category;
+
+    await persistSettings({
+      ...settings,
+      categories: nextCategories,
+      updatedAt: Date.now(),
+    });
+  }
+
   async function addTag(tag: string) {
     await persistSettings(addManagedTags(settings, [tag]));
   }
@@ -596,6 +613,7 @@ export function useLinks() {
     bulkStatus,
     addCategory,
     deleteCategory,
+    reorderCategory,
     addTag,
     deleteTag,
     switchProfile,

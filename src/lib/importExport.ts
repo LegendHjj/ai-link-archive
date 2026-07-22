@@ -96,10 +96,14 @@ export function mergeImportedLinks(current: LinkItem[], imported: LinkItem[]) {
   return [...byId.values()].sort((a, b) => b.createdAt - a.createdAt);
 }
 
+function uniquePreserveOrder(values: string[]) {
+  return [...new Set(values.map((value) => value.trim()).filter(Boolean))];
+}
+
 export function settingsWithLinks(settings: AppSettings, links: LinkItem[]) {
   return {
     ...settings,
-    categories: uniqueSorted([...settings.categories, ...links.map((link) => link.category)]),
+    categories: uniquePreserveOrder([...settings.categories, ...links.map((link) => link.category)]),
     tags: uniqueSorted([...settings.tags, ...links.flatMap((link) => link.tags)]),
     updatedAt: Date.now(),
   };

@@ -16,6 +16,10 @@ function uniqueSorted(values: string[]) {
   );
 }
 
+export function uniquePreserveOrder(values: string[]): string[] {
+  return [...new Set(values.map((value) => value.trim()).filter(Boolean))];
+}
+
 export function buildSettingsFromLinks(links: LinkItem[]): AppSettings {
   const categories = uniqueSorted([
     ...links.map((link) => link.category),
@@ -37,7 +41,7 @@ export function mergeSettings(local: AppSettings, remote: AppSettings): AppSetti
   const winner = remote.updatedAt >= local.updatedAt ? remote : local;
   return {
     version: 1,
-    categories: uniqueSorted(winner.categories),
+    categories: uniquePreserveOrder(winner.categories),
     tags: uniqueSorted([...local.tags, ...remote.tags]),
     updatedAt: Math.max(local.updatedAt, remote.updatedAt),
   };
@@ -113,7 +117,7 @@ export function addManagedCategory(settings: AppSettings, category: string) {
   if (!trimmed || settings.categories.includes(trimmed)) return settings;
   return {
     ...settings,
-    categories: uniqueSorted([...settings.categories, trimmed]),
+    categories: uniquePreserveOrder([...settings.categories, trimmed]),
     updatedAt: Date.now(),
   };
 }
@@ -134,7 +138,7 @@ export function removeManagedCategory(
     settings: {
       ...settings,
       categories: nextLinks.some((link) => link.category === fallback)
-        ? uniqueSorted([...categories, fallback])
+        ? uniquePreserveOrder([...categories, fallback])
         : categories,
       updatedAt: now,
     },
