@@ -22,8 +22,10 @@ import {
   LogIn,
   LogOut,
   MoreHorizontal,
+  NotebookPen,
   Pin,
   Plus,
+  Save,
   Search,
   Settings,
   SlidersHorizontal,
@@ -47,6 +49,12 @@ import {
   signOutOfFirebase,
 } from "./lib/firebase";
 import { parseExportedLinksJson } from "./lib/importExport";
+import {
+  filterLibraryItems,
+  isNoteItem,
+  notePreview,
+  type ContentFilter,
+} from "./lib/noteUtils";
 import type { AppSettings, Category, ItemType, LinkDraft, LinkItem, LinkStatus, UserProfile } from "./types";
 
 const statusLabels: Record<LinkStatus, string> = {
@@ -96,19 +104,25 @@ function Sidebar({
   settings,
   activeCategory,
   activeTag,
+  contentFilter,
+  onLibraryView,
   onCategory,
   onTag,
-  onShowAdd,
+  onShowNote,
+  onShowLink,
   onShowImport,
   onShowSettings,
 }: {
   links: LinkItem[];
   settings: AppSettings;
-  activeCategory: Category | "All Links" | "Archived";
+  activeCategory: Category | "All Items" | "Archived";
   activeTag: string | null;
-  onCategory: (category: Category | "All Links" | "Archived") => void;
+  contentFilter: ContentFilter;
+  onLibraryView: (content: ContentFilter, category?: "All Items" | "Archived") => void;
+  onCategory: (category: Category | "All Items" | "Archived") => void;
   onTag: (tag: string | null) => void;
-  onShowAdd: () => void;
+  onShowNote: () => void;
+  onShowLink: () => void;
   onShowImport: () => void;
   onShowSettings: () => void;
 }) {
@@ -122,7 +136,10 @@ function Sidebar({
       .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
   }, [links, settings.tags]);
 
-  const visibleCount = links.filter((link) => link.status !== "archived").length;
+  const visibleItems = links.filter((link) => link.status !== "archived");
+  const visibleCount = visibleItems.length;
+  const noteCount = visibleItems.filter(isNoteItem).length;
+  const linkCount = visibleCount - noteCount;
   const archivedCount = links.filter((link) => link.status === "archived").length;
 
   return (
@@ -131,33 +148,74 @@ function Sidebar({
         <div className="brand-mark">AI</div>
         <div>
           <strong>AI Link Archive</strong>
-          <span>Your AI bookmark hub</span>
+          <span>Links and thinking, together</span>
         </div>
       </div>
 
-      <button className="primary-action" onClick={onShowAdd}>
-        <Plus size={18} />
-        Add Item
+      <button className="primary-action" onClick={onShowNote}>
+        <NotebookPen size={18} />
+        New note
       </button>
-      <button className="secondary-action" onClick={onShowImport}>
-        <Import size={17} />
-        Paste Multiple Links
+      <button className="secondary-action" onClick={onShowLink}>
+        <Link2 size={17} />
+        Save a link
+      </button>
+      <button className="sidebar-utility-action" onClick={onShowImport}>
+        <Import size={16} />
+        Import links
       </button>
 
       <div className="sidebar-scroll">
         <nav className="nav-group">
-          <p>Categories</p>
+          <p>Library</p>
           <button
-            className={activeCategory === "All Links" && !activeTag ? "active" : ""}
+            className={activeCategory === "All Items" && contentFilter === "all" && !activeTag ? "active" : ""}
             onClick={() => {
-              onCategory("All Links");
+              onLibraryView("all", "All Items");
               onTag(null);
             }}
           >
             <Layers3 size={16} />
-            <span>All Links</span>
+            <span>All items</span>
             <b>{visibleCount}</b>
           </button>
+          <button
+            className={activeCategory === "All Items" && contentFilter === "notes" && !activeTag ? "active" : ""}
+            onClick={() => {
+              onLibraryView("notes", "All Items");
+              onTag(null);
+            }}
+          >
+            <FileText size={16} />
+            <span>Notes</span>
+            <b>{noteCount}</b>
+          </button>
+          <button
+            className={activeCategory === "All Items" && contentFilter === "links" && !activeTag ? "active" : ""}
+            onClick={() => {
+              onLibraryView("links", "All Items");
+              onTag(null);
+            }}
+          >
+            <Link2 size={16} />
+            <span>Links</span>
+            <b>{linkCount}</b>
+          </button>
+          <button
+            className={activeCategory === "Archived" && !activeTag ? "active" : ""}
+            onClick={() => {
+              onLibraryView("all", "Archived");
+              onTag(null);
+            }}
+          >
+            <Archive size={16} />
+            <span>Archived</span>
+            <b>{archivedCount}</b>
+          </button>
+        </nav>
+
+        <nav className="nav-group">
+          <p>Categories</p>
           {settings.categories.map((category) => (
             <button
               key={category}
@@ -172,17 +230,6 @@ function Sidebar({
               <b>{links.filter((link) => link.category === category).length}</b>
             </button>
           ))}
-          <button
-            className={activeCategory === "Archived" && !activeTag ? "active" : ""}
-            onClick={() => {
-              onCategory("Archived");
-              onTag(null);
-            }}
-          >
-            <Archive size={16} />
-            <span>Archived</span>
-            <b>{archivedCount}</b>
-          </button>
         </nav>
 
         <nav className="nav-group tags-nav">
@@ -192,7 +239,7 @@ function Sidebar({
               key={tag}
               className={activeTag === tag ? "active" : ""}
               onClick={() => {
-                onCategory("All Links");
+                onLibraryView("all", "All Items");
                 onTag(activeTag === tag ? null : tag);
               }}
             >
@@ -390,6 +437,60 @@ function LinkGrid({
   );
 }
 
+function NoteGrid({
+  notes,
+  activeId,
+  onSelect,
+  onAddNote,
+}: {
+  notes: LinkItem[];
+  activeId: string | null;
+  onSelect: (note: LinkItem) => void;
+  onAddNote: () => void;
+}) {
+  return (
+    <section className="notes-board" aria-label="Notes">
+      <button className="quick-note-card" onClick={onAddNote}>
+        <span><Plus size={22} /></span>
+        <strong>Start a new note</strong>
+        <small>Capture an idea while it is fresh</small>
+      </button>
+      {notes.map((note) => (
+        <article
+          key={note.id}
+          className={`note-card ${activeId === note.id ? "focused" : ""}`}
+          onClick={() => onSelect(note)}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") onSelect(note);
+          }}
+        >
+          <div className="note-card-topline">
+            <span className="note-card-icon"><FileText size={16} /></span>
+            <em className={`category-pill ${toneForCategory(note.category)}`}>
+              {note.category}
+            </em>
+            {note.favorite ? (
+              <Star size={16} fill="#f6bd2f" stroke="#f6bd2f" aria-label="Favorite" />
+            ) : null}
+          </div>
+          <h3>{note.title}</h3>
+          <p>{notePreview(note)}</p>
+          <div className="note-card-footer">
+            <span className="note-card-tags">
+              {note.tags.slice(0, 3).map((tag) => <i key={tag}>{tag}</i>)}
+            </span>
+            <time dateTime={new Date(note.updatedAt).toISOString()}>
+              Edited {formatRelative(note.updatedAt)}
+            </time>
+          </div>
+        </article>
+      ))}
+    </section>
+  );
+}
+
 function DetailPanel({
   link,
   categories,
@@ -471,7 +572,7 @@ function DetailPanel({
 
       <div className="detail-header">
         <span className="source-badge" title={link.source}>
-          <MoreHorizontal size={18} />
+          {isNoteItem(link) ? <FileText size={18} /> : <MoreHorizontal size={18} />}
         </span>
         <h2>{titleDraft || link.title}</h2>
         <div className="detail-actions">
@@ -522,6 +623,22 @@ function DetailPanel({
           onBlur={() => commitTextPatch({ title: titleDraft })}
         />
       </section>
+
+      {isNoteItem(link) ? (
+        <section className="detail-section note-content-section">
+          <div className="detail-label-row">
+            <label>Note</label>
+            <span>Saved when you leave the field</span>
+          </div>
+          <textarea
+            className="note-body-editor"
+            value={notesDraft}
+            onChange={(event) => setNotesDraft(event.target.value)}
+            onBlur={() => commitTextPatch({ notes: notesDraft })}
+            placeholder="Write down the idea, context, or next step…"
+          />
+        </section>
+      ) : null}
 
       <section className="detail-section">
         <label>Tags</label>
@@ -576,15 +693,17 @@ function DetailPanel({
         </label>
       </section>
 
-      <section className="detail-section">
-        <label>Notes</label>
-        <textarea
-          value={notesDraft}
-          onChange={(event) => setNotesDraft(event.target.value)}
-          onBlur={() => commitTextPatch({ notes: notesDraft })}
-          placeholder="Why did you save this?"
-        />
-      </section>
+      {!isNoteItem(link) ? (
+        <section className="detail-section">
+          <label>Notes</label>
+          <textarea
+            value={notesDraft}
+            onChange={(event) => setNotesDraft(event.target.value)}
+            onBlur={() => commitTextPatch({ notes: notesDraft })}
+            placeholder="Why did you save this?"
+          />
+        </section>
+      ) : null}
 
       <section className="detail-meta">
         <div>
@@ -611,35 +730,146 @@ function DetailPanel({
             Open Link
           </a>
         ) : null}
-        <button onClick={() => onUpdate(link.id, { status: "read" })}>
-          <CheckCircle2 size={17} />
-          Mark as Read
-        </button>
+        {!isNoteItem(link) ? (
+          <button onClick={() => onUpdate(link.id, { status: "read" })}>
+            <CheckCircle2 size={17} />
+            Mark as Read
+          </button>
+        ) : null}
         <button onClick={() => onUpdate(link.id, { status: "archived" })}>
           <Archive size={17} />
-          Archive
+          Archive {isNoteItem(link) ? "note" : "link"}
         </button>
         <button className="danger" onClick={() => onDelete(link.id)}>
           <Trash2 size={17} />
-          Delete Item
+          Delete {isNoteItem(link) ? "note" : "link"}
         </button>
       </div>
     </aside>
   );
 }
 
+function MobileDetailSheet({
+  item,
+  onUpdate,
+  onClose,
+}: {
+  item: LinkItem;
+  onUpdate: (id: string, patch: Partial<LinkItem>) => void;
+  onClose: () => void;
+}) {
+  const [title, setTitle] = useState(item.title);
+  const [body, setBody] = useState(item.notes);
+  const note = isNoteItem(item);
+
+  useEffect(() => {
+    setTitle(item.title);
+    setBody(item.notes);
+  }, [item.id, item.notes, item.title]);
+
+  function saveNote() {
+    const patch: Partial<LinkItem> = {};
+    if (title.trim() && title.trim() !== item.title) patch.title = title.trim();
+    if (body !== item.notes) patch.notes = body;
+    if (Object.keys(patch).length) onUpdate(item.id, patch);
+    onClose();
+  }
+
+  return (
+    <div className="mobile-sheet-backdrop" onClick={onClose} aria-label="Close detail">
+      <div
+        className={`mobile-sheet ${note ? "mobile-note-sheet" : ""}`}
+        onClick={(event) => event.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+      >
+        <div className="mobile-sheet-handle" />
+        <div className="mobile-sheet-header">
+          <span className={`read-dot ${item.status}`} />
+          <strong className="mobile-sheet-title">{note ? "Edit note" : item.title}</strong>
+          <button className="icon-button" onClick={onClose} aria-label="Close">
+            <X size={18} />
+          </button>
+        </div>
+
+        {note ? (
+          <div className="mobile-note-editor">
+            <label>
+              Title
+              <input value={title} onChange={(event) => setTitle(event.target.value)} />
+            </label>
+            <label>
+              Note
+              <textarea
+                value={body}
+                onChange={(event) => setBody(event.target.value)}
+                placeholder="Add your thought, context, or next step…"
+              />
+            </label>
+            <button className="mobile-save-note" onClick={saveNote}>
+              <Save size={17} />
+              Save note
+            </button>
+          </div>
+        ) : (
+          <>
+            <a className="mobile-sheet-open-btn" href={item.url} target="_blank" rel="noreferrer">
+              <ExternalLink size={18} />
+              Open link
+            </a>
+            <div className="mobile-sheet-url">
+              <Globe2 size={14} />
+              <span>{item.domain || item.url}</span>
+            </div>
+            {item.notes ? <p className="mobile-sheet-notes">{item.notes}</p> : null}
+          </>
+        )}
+
+        <div className="mobile-sheet-meta">
+          <em className={`category-pill ${toneForCategory(item.category)}`}>{item.category}</em>
+          {item.tags.slice(0, 5).map((tag) => (
+            <i key={tag} className="mobile-sheet-tag">{tag}</i>
+          ))}
+        </div>
+        <div className="mobile-sheet-actions">
+          {!note ? (
+            <button onClick={() => { onUpdate(item.id, { status: "read" }); onClose(); }}>
+              <CheckCircle2 size={16} />
+              Mark read
+            </button>
+          ) : null}
+          <button onClick={() => onUpdate(item.id, { favorite: !item.favorite })}>
+            <Star
+              size={16}
+              fill={item.favorite ? "#f6bd2f" : "none"}
+              stroke={item.favorite ? "#f6bd2f" : "currentColor"}
+            />
+            {item.favorite ? "Unfavorite" : "Favorite"}
+          </button>
+          <button onClick={() => { onUpdate(item.id, { status: "archived" }); onClose(); }}>
+            <Archive size={16} />
+            Archive
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function AddLinkModal({
   categories,
   defaultCategory,
+  defaultType,
   onClose,
   onAdd,
 }: {
   categories: Category[];
   defaultCategory?: Category;
+  defaultType: ItemType;
   onClose: () => void;
   onAdd: (draft: LinkDraft) => void;
 }) {
-  const [type, setType] = useState<ItemType>("link");
+  const [type, setType] = useState<ItemType>(defaultType);
   const [url, setUrl] = useState("");
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState(defaultCategory ?? categories[0] ?? "");
@@ -666,8 +896,15 @@ function AddLinkModal({
 
   return (
     <div className="modal-backdrop">
-      <form className="modal" onSubmit={submit}>
-        <h2>Add Item</h2>
+      <form className={`modal ${type === "note" ? "note-modal" : ""}`} onSubmit={submit}>
+        <div className="modal-heading">
+          <h2>{type === "note" ? "New note" : "Save a link"}</h2>
+          <p>
+            {type === "note"
+              ? "Capture the thought first. You can organize it now or later."
+              : "Keep a useful resource together with the reason it matters."}
+          </p>
+        </div>
         <div className="segmented-control">
           <button
             type="button"
@@ -689,50 +926,69 @@ function AddLinkModal({
         {type === "link" ? (
           <label>
             URL
-            <input value={url} onChange={(event) => setUrl(event.target.value)} autoFocus />
+            <input
+              value={url}
+              onChange={(event) => setUrl(event.target.value)}
+              placeholder="https://"
+              autoFocus
+            />
           </label>
         ) : null}
         <label>
-          Title
+          {type === "note" ? "Title (optional)" : "Title"}
           <input
             value={title}
             onChange={(event) => setTitle(event.target.value)}
+            placeholder={type === "note" ? "Give this thought a name" : "Page title"}
             autoFocus={type === "note"}
           />
         </label>
-        <label>
-          Category
-          {categories.length ? (
-            <select value={category} onChange={(event) => setCategory(event.target.value)}>
-              {categories.map((item) => (
-                <option key={item}>{item}</option>
-              ))}
-            </select>
-          ) : (
-            <input
-              value={category}
-              onChange={(event) => setCategory(event.target.value)}
-              placeholder="Category"
-            />
-          )}
-        </label>
-        <label>
-          Tags
-          <input
-            value={tags}
-            onChange={(event) => setTags(event.target.value)}
-            placeholder="llm, agents, research"
+        <label className={type === "note" ? "note-modal-body" : ""}>
+          {type === "note" ? "Note" : "Why are you saving this?"}
+          <textarea
+            value={notes}
+            onChange={(event) => setNotes(event.target.value)}
+            placeholder={
+              type === "note"
+                ? "Write the idea, context, questions, or next steps…"
+                : "Add a short reminder or takeaway"
+            }
           />
         </label>
-        <label>
-          Notes
-          <textarea value={notes} onChange={(event) => setNotes(event.target.value)} />
-        </label>
+        <div className="modal-field-grid">
+          <label>
+            Category
+            {categories.length ? (
+              <select value={category} onChange={(event) => setCategory(event.target.value)}>
+                {categories.map((item) => (
+                  <option key={item}>{item}</option>
+                ))}
+              </select>
+            ) : (
+              <input
+                value={category}
+                onChange={(event) => setCategory(event.target.value)}
+                placeholder="Category"
+              />
+            )}
+          </label>
+          <label>
+            Tags
+            <input
+              value={tags}
+              onChange={(event) => setTags(event.target.value)}
+              placeholder="ideas, research"
+            />
+          </label>
+        </div>
         <div className="modal-actions">
           <button type="button" onClick={onClose}>
             Cancel
           </button>
-          <button type="submit">Save Item</button>
+          <button type="submit">
+            <Save size={16} />
+            {type === "note" ? "Save note" : "Save link"}
+          </button>
         </div>
       </form>
     </div>
@@ -1094,13 +1350,15 @@ export default function App() {
   } = useLinks();
   const [query, setQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState<
-    Category | "All Links" | "Archived"
-  >("All Links");
+    Category | "All Items" | "Archived"
+  >("All Items");
+  const [contentFilter, setContentFilter] = useState<ContentFilter>("all");
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<LinkStatus | "all">("all");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
+  const [addType, setAddType] = useState<ItemType>("note");
   const [showImport, setShowImport] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
@@ -1110,37 +1368,55 @@ export default function App() {
   const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
 
   const filteredLinks = useMemo(() => {
-    const lowerQuery = query.toLowerCase().trim();
-    return links
-      .filter((link) => {
-        if (activeCategory === "Archived") return link.status === "archived";
-        if (link.status === "archived") return false;
-        if (activeCategory !== "All Links" && link.category !== activeCategory) {
-          return false;
-        }
-        if (activeTag && !link.tags.includes(activeTag)) return false;
-        if (statusFilter !== "all" && link.status !== statusFilter) return false;
-        if (!lowerQuery) return true;
-        return [link.title, link.url, link.domain, link.notes, ...link.tags]
-          .join(" ")
-          .toLowerCase()
-          .includes(lowerQuery);
-      })
-      .sort((a, b) => b.createdAt - a.createdAt);
-  }, [activeCategory, activeTag, links, query, statusFilter]);
+    return filterLibraryItems(links, {
+      content: contentFilter,
+      category: activeCategory,
+      status: statusFilter,
+      query,
+      tag: activeTag,
+    });
+  }, [activeCategory, activeTag, contentFilter, links, query, statusFilter]);
 
   const activeLink = detailOpen
     ? (activeId ? links.find((link) => link.id === activeId) ?? null : null) ??
       (detailPinned ? filteredLinks[0] ?? null : null)
     : null;
   const defaultAddCategory =
-    activeCategory !== "All Links" && activeCategory !== "Archived"
+    activeCategory !== "All Items" && activeCategory !== "Archived"
       ? activeCategory
       : undefined;
   const selectedCount = selectedIds.length;
+  const collectionTitle =
+    activeCategory === "Archived"
+      ? "Archived"
+      : activeTag
+        ? `#${activeTag}`
+        : activeCategory !== "All Items"
+          ? activeCategory
+          : contentFilter === "notes"
+            ? "Notes"
+            : contentFilter === "links"
+              ? "Links"
+              : "All items";
+  const collectionDescription =
+    contentFilter === "notes"
+      ? "Ideas, context, and working thoughts you can read at a glance."
+      : contentFilter === "links"
+        ? "Saved resources with the context you added."
+        : "Your notes and saved resources in one place.";
+
+  function openAdd(type: ItemType) {
+    setAddType(type);
+    setShowAdd(true);
+  }
 
   async function handleAdd(draft: LinkDraft) {
     const link = await addLink(draft);
+    if (isNoteItem(link)) {
+      setContentFilter("notes");
+      setActiveCategory("All Items");
+      setViewMode("grid");
+    }
     setActiveId(link.id);
     setDetailOpen(true);
     setShowAdd(false);
@@ -1158,7 +1434,8 @@ export default function App() {
 
   function handleSwitchProfile(profileId: string) {
     switchProfile(profileId);
-    setActiveCategory("All Links");
+    setActiveCategory("All Items");
+    setContentFilter("all");
     setActiveTag(null);
     setStatusFilter("all");
     setSelectedIds([]);
@@ -1169,7 +1446,8 @@ export default function App() {
   async function handleCreateProfile(name: string) {
     await addProfile(name);
     setShowProfile(false);
-    setActiveCategory("All Links");
+    setActiveCategory("All Items");
+    setContentFilter("all");
     setActiveTag(null);
     setStatusFilter("all");
     setSelectedIds([]);
@@ -1204,12 +1482,21 @@ export default function App() {
         settings={settings}
         activeCategory={activeCategory}
         activeTag={activeTag}
+        contentFilter={contentFilter}
+        onLibraryView={(content, category = "All Items") => {
+          setContentFilter(content);
+          setActiveCategory(category);
+          setSelectedIds([]);
+          if (content === "notes") setViewMode("grid");
+        }}
         onCategory={(category) => {
           setActiveCategory(category);
+          setContentFilter("all");
           setSelectedIds([]);
         }}
         onTag={setActiveTag}
-        onShowAdd={() => setShowAdd(true)}
+        onShowNote={() => openAdd("note")}
+        onShowLink={() => openAdd("link")}
         onShowImport={() => setShowImport(true)}
         onShowSettings={() => setShowSettings(true)}
       />
@@ -1275,6 +1562,14 @@ export default function App() {
           )}
         </header>
 
+        <section className="collection-header">
+          <div>
+            <h1>{collectionTitle}</h1>
+            <p>{collectionDescription}</p>
+          </div>
+          <span>{filteredLinks.length} {filteredLinks.length === 1 ? "item" : "items"}</span>
+        </section>
+
         <section className="bulkbar">
           <label className="check-cell all-check">
             <input
@@ -1314,15 +1609,15 @@ export default function App() {
             <Trash2 size={17} />
             Delete
           </button>
-          <button onClick={() => setShowAdd(true)}>
-            <Plus size={17} />
-            Add Item
+          <button className="new-note-inline" onClick={() => openAdd("note")}>
+            <NotebookPen size={17} />
+            New note
           </button>
           <button onClick={() => setShowImport(true)}>
             <Import size={17} />
             Bulk Paste
           </button>
-          <div className="view-actions">
+          <div className={`view-actions ${contentFilter === "notes" ? "notes-view-actions" : ""}`}>
             <button
               className={viewMode === "list" ? "active" : ""}
               title="List view"
@@ -1350,7 +1645,18 @@ export default function App() {
         {syncError ? <div className="error-banner">{syncError}</div> : null}
 
         {loading ? (
-          <div className="empty-state">Loading links...</div>
+          <div className="empty-state">Loading your library...</div>
+        ) : filteredLinks.length && contentFilter === "notes" ? (
+          <NoteGrid
+            notes={filteredLinks}
+            activeId={activeLink?.id ?? null}
+            onAddNote={() => openAdd("note")}
+            onSelect={(note) => {
+              setActiveId(note.id);
+              setDetailOpen(true);
+              setMobileSheetOpen(true);
+            }}
+          />
         ) : filteredLinks.length && viewMode === "grid" ? (
           <LinkGrid
             links={filteredLinks}
@@ -1397,10 +1703,16 @@ export default function App() {
           />
         ) : (
           <div className="empty-state">
-            <Link2 size={32} />
-            <h2>No links match this view</h2>
-            <p>Add a URL, paste a batch, or loosen the filters.</p>
-            <button onClick={() => setShowAdd(true)}>Add Link</button>
+            {contentFilter === "notes" ? <NotebookPen size={32} /> : <Link2 size={32} />}
+            <h2>{contentFilter === "notes" ? "No notes here yet" : "Nothing matches this view"}</h2>
+            <p>
+              {contentFilter === "notes"
+                ? "Start with a thought, meeting takeaway, or idea you want to keep."
+                : "Save a link or loosen the current filters."}
+            </p>
+            <button onClick={() => openAdd(contentFilter === "notes" ? "note" : "link")}>
+              {contentFilter === "notes" ? "Create a note" : "Save a link"}
+            </button>
           </div>
         )}
 
@@ -1434,97 +1746,18 @@ export default function App() {
 
       {/* Mobile bottom sheet — shown when a row is tapped on narrow screens */}
       {mobileSheetOpen && activeLink ? (
-        <div
-          className="mobile-sheet-backdrop"
-          onClick={() => setMobileSheetOpen(false)}
-          aria-label="Close detail"
-        >
-          <div
-            className="mobile-sheet"
-            onClick={(e) => e.stopPropagation()}
-            role="dialog"
-            aria-modal="true"
-          >
-            <div className="mobile-sheet-handle" />
-            <div className="mobile-sheet-header">
-              <span className={`read-dot ${activeLink.status}`} />
-              <strong className="mobile-sheet-title">{activeLink.title}</strong>
-              <button
-                className="icon-button"
-                onClick={() => setMobileSheetOpen(false)}
-                aria-label="Close"
-              >
-                <X size={18} />
-              </button>
-            </div>
-            {activeLink.url ? (
-              <a
-                className="mobile-sheet-open-btn"
-                href={activeLink.url}
-                target="_blank"
-                rel="noreferrer"
-              >
-                <ExternalLink size={18} />
-                Open Link
-              </a>
-            ) : null}
-            {activeLink.url ? (
-              <div className="mobile-sheet-url">
-                <Globe2 size={14} />
-                <span>{activeLink.domain || activeLink.url}</span>
-              </div>
-            ) : null}
-            <div className="mobile-sheet-meta">
-              <em className={`category-pill ${toneForCategory(activeLink.category)}`}>
-                {activeLink.category}
-              </em>
-              {activeLink.tags.slice(0, 5).map((tag) => (
-                <i key={tag} className="mobile-sheet-tag">{tag}</i>
-              ))}
-            </div>
-            {activeLink.notes ? (
-              <p className="mobile-sheet-notes">{activeLink.notes}</p>
-            ) : null}
-            <div className="mobile-sheet-actions">
-              <button
-                onClick={() => {
-                  updateLink(activeLink.id, { status: "read" });
-                  setMobileSheetOpen(false);
-                }}
-              >
-                <CheckCircle2 size={16} />
-                Mark Read
-              </button>
-              <button
-                onClick={() => {
-                  updateLink(activeLink.id, { favorite: !activeLink.favorite });
-                }}
-              >
-                <Star
-                  size={16}
-                  fill={activeLink.favorite ? "#f6bd2f" : "none"}
-                  stroke={activeLink.favorite ? "#f6bd2f" : "currentColor"}
-                />
-                {activeLink.favorite ? "Unfavorite" : "Favorite"}
-              </button>
-              <button
-                onClick={() => {
-                  updateLink(activeLink.id, { status: "archived" });
-                  setMobileSheetOpen(false);
-                }}
-              >
-                <Archive size={16} />
-                Archive
-              </button>
-            </div>
-          </div>
-        </div>
+        <MobileDetailSheet
+          item={activeLink}
+          onUpdate={updateLink}
+          onClose={() => setMobileSheetOpen(false)}
+        />
       ) : null}
 
       {showAdd ? (
         <AddLinkModal
           categories={settings.categories}
           defaultCategory={defaultAddCategory}
+          defaultType={addType}
           onClose={() => setShowAdd(false)}
           onAdd={handleAdd}
         />

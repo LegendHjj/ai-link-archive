@@ -233,6 +233,24 @@ textarea:focus-visible {
   color: var(--sb-bright);
 }
 
+.sidebar-utility-action {
+  display: inline-flex;
+  width: 100%;
+  min-height: 32px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 0;
+  background: transparent;
+  color: var(--sb-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.sidebar-utility-action:hover {
+  color: var(--sb-bright);
+}
+
 .toolbar-button:hover,
 .bulkbar button:hover,
 .icon-button:hover {
@@ -393,10 +411,43 @@ textarea:focus-visible {
 
 .main {
   display: grid;
-  grid-template-rows: auto auto 1fr auto;
+  grid-template-rows: auto auto auto 1fr auto;
   min-width: 0;
   border-right: 1px solid var(--line);
   background: var(--panel);
+}
+
+.collection-header {
+  display: flex;
+  min-width: 0;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 20px 20px 14px;
+  background: var(--panel);
+}
+
+.collection-header h1 {
+  margin: 0;
+  color: var(--text);
+  font-size: 23px;
+  font-weight: 760;
+  letter-spacing: -0.025em;
+}
+
+.collection-header p {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.collection-header > span {
+  flex: 0 0 auto;
+  padding-bottom: 2px;
+  color: var(--faint);
+  font-size: 12px;
+  font-weight: 600;
 }
 
 /* ─── Topbar (glass) ─────────────────────────────────────────── */
@@ -622,6 +673,16 @@ kbd {
   box-shadow: var(--shadow-xs);
 }
 
+.bulkbar .new-note-inline {
+  border-color: rgba(99, 102, 241, 0.22);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.notes-view-actions {
+  display: none;
+}
+
 /* ─── Table (list view) ──────────────────────────────────────── */
 
 .table-shell {
@@ -841,6 +902,163 @@ kbd {
   overflow: auto;
   background: var(--panel);
   scrollbar-width: thin;
+}
+
+.notes-board {
+  display: grid;
+  min-height: 0;
+  max-height: calc(100dvh - 260px);
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  align-content: start;
+  gap: 16px;
+  padding: 20px;
+  overflow: auto;
+  background:
+    linear-gradient(rgba(99, 102, 241, 0.025), rgba(99, 102, 241, 0)),
+    var(--panel);
+  scrollbar-width: thin;
+}
+
+.quick-note-card,
+.note-card {
+  min-height: 250px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--panel);
+  padding: 18px;
+  text-align: left;
+}
+
+.quick-note-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 8px;
+  border-style: dashed;
+  border-color: rgba(99, 102, 241, 0.32);
+  background: linear-gradient(145deg, rgba(99, 102, 241, 0.08), rgba(139, 92, 246, 0.025));
+  color: var(--text);
+  cursor: pointer;
+  transition: transform 180ms var(--ease), border-color 180ms ease, background 180ms ease;
+}
+
+.quick-note-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--accent);
+  background: linear-gradient(145deg, rgba(99, 102, 241, 0.12), rgba(139, 92, 246, 0.05));
+}
+
+.quick-note-card > span {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  margin-bottom: 4px;
+  place-items: center;
+  border-radius: 12px;
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 8px 20px rgba(99, 102, 241, 0.22);
+}
+
+.quick-note-card strong {
+  font-size: 15px;
+}
+
+.quick-note-card small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.note-card {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  cursor: pointer;
+  box-shadow: var(--shadow-xs);
+  transition: transform 180ms var(--ease), border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.note-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(99, 102, 241, 0.3);
+  box-shadow: 0 12px 28px rgba(30, 41, 59, 0.09);
+}
+
+.note-card.focused {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+.note-card-topline,
+.note-card-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.note-card-topline > svg {
+  margin-left: auto;
+}
+
+.note-card-icon {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border-radius: 9px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.note-card h3 {
+  margin: 18px 0 8px;
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 720;
+  line-height: 1.3;
+  letter-spacing: -0.015em;
+}
+
+.note-card > p {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.65;
+  white-space: pre-line;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 6;
+}
+
+.note-card-footer {
+  justify-content: space-between;
+  margin-top: auto;
+  padding-top: 18px;
+  color: var(--faint);
+  font-size: 11px;
+}
+
+.note-card-tags {
+  display: flex;
+  min-width: 0;
+  gap: 5px;
+  overflow: hidden;
+}
+
+.note-card-tags i {
+  padding: 4px 7px;
+  border-radius: 6px;
+  background: var(--line-soft);
+  color: var(--muted);
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 600;
+}
+
+.note-card time {
+  flex: 0 0 auto;
 }
 
 .link-card-tile {
@@ -1138,6 +1356,26 @@ kbd {
   line-height: 1.5;
 }
 
+.detail-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.detail-label-row > span {
+  color: var(--faint);
+  font-size: 10px;
+}
+
+.detail-section .note-body-editor {
+  min-height: 260px;
+  padding: 14px;
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
 .detail-tags {
   display: flex;
   flex-wrap: wrap;
@@ -1373,6 +1611,35 @@ kbd {
   font-size: 18px;
   font-weight: 700;
   letter-spacing: -0.01em;
+}
+
+.modal-heading {
+  display: grid;
+  gap: 5px;
+}
+
+.modal-heading p {
+  max-width: 430px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.modal-field-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.note-modal {
+  width: min(600px, 100%);
+}
+
+.note-modal .note-modal-body textarea {
+  min-height: 210px;
+  padding: 14px;
+  font-size: 14px;
+  line-height: 1.65;
 }
 
 .modal label {
@@ -1635,6 +1902,10 @@ kbd {
   box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
 }
 
+.modal-actions button[type="submit"] svg {
+  flex: 0 0 auto;
+}
+
 .modal-actions button[type="submit"]:hover {
   box-shadow: 0 4px 16px rgba(99, 102, 241, 0.4);
 }
@@ -1794,6 +2065,30 @@ kbd {
 
   kbd {
     display: none;
+  }
+
+  .collection-header {
+    align-items: flex-start;
+    padding: 18px 14px 12px;
+  }
+
+  .collection-header p {
+    max-width: 290px;
+  }
+
+  .notes-board {
+    grid-template-columns: 1fr;
+    max-height: none;
+    padding: 14px;
+  }
+
+  .quick-note-card,
+  .note-card {
+    min-height: 220px;
+  }
+
+  .modal-field-grid {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -1963,6 +2258,69 @@ kbd {
   .mobile-sheet-actions button:active {
     background: var(--accent-soft);
     border-color: rgba(99, 102, 241, 0.25);
+  }
+
+  .mobile-note-sheet .mobile-sheet-header {
+    margin-bottom: 12px;
+  }
+
+  .mobile-note-editor {
+    display: grid;
+    gap: 14px;
+    margin-bottom: 18px;
+  }
+
+  .mobile-note-editor label {
+    display: grid;
+    gap: 6px;
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 650;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+  }
+
+  .mobile-note-editor input,
+  .mobile-note-editor textarea {
+    width: 100%;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--panel);
+    color: var(--text);
+    padding: 11px 12px;
+    outline: none;
+    font-size: 14px;
+    text-transform: none;
+  }
+
+  .mobile-note-editor textarea {
+    min-height: 220px;
+    resize: vertical;
+    line-height: 1.65;
+  }
+
+  .mobile-note-editor input:focus,
+  .mobile-note-editor textarea:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+  }
+
+  .mobile-save-note {
+    display: inline-flex;
+    min-height: 48px;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: 0;
+    border-radius: 12px;
+    background: var(--accent);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 700;
+  }
+
+  .mobile-note-sheet .mobile-sheet-actions {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 
