@@ -27,14 +27,17 @@ import {
 import { mergeImportedLinks, settingsWithLinks } from "../lib/importExport";
 import {
   DEFAULT_PROFILE_ID,
+  GUEST_STORAGE_ID,
   createDefaultProfile,
   createEmptyProfileCache,
   createProfile,
+  isGuestModeEnabled,
   loadFirebaseProfileCache,
   loadLocalCache,
   loadProfilesCache,
   saveLocalCache,
   saveProfilesCache,
+  setGuestModeEnabled,
 } from "../lib/localStore";
 import { tryRemoteWrite } from "../lib/remoteWrite";
 import {
@@ -119,12 +122,13 @@ function updateCache(
 }
 
 export function useLinks() {
-  const initial = loadLocalCache();
+  const [initial] = useState(loadLocalCache);
   const [links, setLinks] = useState<LinkItem[]>(initial.links);
   const [settings, setSettings] = useState<AppSettings>(initial.settings);
   const [profiles, setProfiles] = useState<UserProfile[]>([createDefaultProfile()]);
   const [activeProfileId, setActiveProfileId] = useState(DEFAULT_PROFILE_ID);
   const [user, setUser] = useState<User | null>(null);
+  const [guestMode, setGuestMode] = useState(false);
   const [authReady, setAuthReady] = useState(!firebaseEnabled);
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -142,6 +146,8 @@ export function useLinks() {
       setUser(nextUser);
       setAuthReady(true);
       if (nextUser) {
+        setGuestModeEnabled(false);
+        setGuestMode(false);
         const profilesCache = loadProfilesCache(nextUser.uid);
         const cache = loadFirebaseProfileCache(
           nextUser.uid,
@@ -152,7 +158,16 @@ export function useLinks() {
         setActiveProfileId(profilesCache.activeProfileId);
         setLinks(cache.links);
         setSettings(cache.settings);
+      } else if (isGuestModeEnabled()) {
+        const profilesCache = loadProfilesCache(GUEST_STORAGE_ID);
+        const cache = loadLocalCache(GUEST_STORAGE_ID, profilesCache.activeProfileId);
+        setGuestMode(true);
+        setProfiles(profilesCache.profiles);
+        setActiveProfileId(profilesCache.activeProfileId);
+        setLinks(cache.links);
+        setSettings(cache.settings);
       } else {
+        setGuestMode(false);
         setLinks([]);
         setSettings(initial.settings);
         setProfiles([createDefaultProfile()]);
@@ -321,6 +336,8 @@ export function useLinks() {
     };
   }, [activeProfileId, authReady, user]);
 
+  const storageUserId = guestMode ? GUEST_STORAGE_ID : user?.uid;
+
   useEffect(() => {
     if (firebaseEnabled) return;
     updateCache(null, undefined, links, settings);
@@ -328,7 +345,7 @@ export function useLinks() {
 
   async function persistLinks(nextLinks: LinkItem[], changedLinks: LinkItem[]) {
     setLinks(nextLinks);
-    updateCache(user?.uid, activeProfileId, nextLinks, settings);
+    updateCache(storageUserId, activeProfileId, nextLinks, settings);
 
     if (firebaseEnabled && user && changedLinks.length) {
       const synced = await tryRemoteWrite(async () => {
@@ -382,7 +399,7 @@ export function useLinks() {
   ) {
     setSettings(nextSettings);
     setLinks(nextLinks);
-    updateCache(user?.uid, activeProfileId, nextLinks, nextSettings);
+    updateCache(storageUserId, activeProfileId, nextLinks, nextSettings);
 
     await persistRemoteSettings(nextSettings, nextLinks, changedLinks);
   }
@@ -400,7 +417,7 @@ export function useLinks() {
       item.tags,
     );
     setSettings(nextSettings);
-    updateCache(user?.uid, activeProfileId, nextLinks, nextSettings);
+    updateCache(storageUserId, activeProfileId, nextLinks, nextSettings);
     setLinks(nextLinks);
 
     if (firebaseEnabled && user) {
@@ -472,7 +489,7 @@ export function useLinks() {
       .map((link) => ({ ...link, deletedAt: Date.now(), updatedAt: Date.now() }));
     const next = links.filter((link) => !idSet.has(link.id));
     setLinks(next);
-    updateCache(user?.uid, activeProfileId, next, settings);
+    updateCache(storageUserId, activeProfileId, next, settings);
 
     if (firebaseEnabled && user) {
       const synced = await tryRemoteWrite(async () => {
@@ -543,17 +560,17 @@ export function useLinks() {
     const profile = profiles.find((item) => item.id === profileId);
     if (!profile || profile.id === activeProfileId) return;
 
-    if (user) {
+    if (storageUserId) {
       saveProfilesCache({
         version: 1,
-        userId: user.uid,
+        userId: storageUserId,
         profiles,
         activeProfileId: profile.id,
         savedAt: Date.now(),
       });
     }
 
-    const cache = loadLocalCache(user?.uid, profile.id);
+    const cache = loadLocalCache(storageUserId, profile.id);
     setActiveProfileId(profile.id);
     setLinks(cache.links);
     setSettings(cache.settings);
@@ -568,15 +585,18 @@ export function useLinks() {
     setLinks([]);
     setSettings(DEFAULT_SETTINGS);
 
-    if (user) {
+    if (storageUserId) {
       saveProfilesCache({
         version: 1,
-        userId: user.uid,
+        userId: storageUserId,
         profiles: nextProfiles,
         activeProfileId: profile.id,
         savedAt: Date.now(),
       });
-      saveLocalCache(createEmptyProfileCache(user.uid, profile.id));
+      saveLocalCache(createEmptyProfileCache(storageUserId, profile.id));
+    }
+
+    if (user) {
       const synced = await tryRemoteWrite(async () => {
         await Promise.all([
           saveFirebaseProfile(user.uid, profile),
@@ -587,12 +607,35 @@ export function useLinks() {
     }
   }
 
+  function enterGuestMode() {
+    setGuestModeEnabled(true);
+    const profilesCache = loadProfilesCache(GUEST_STORAGE_ID);
+    const cache = loadLocalCache(GUEST_STORAGE_ID, profilesCache.activeProfileId);
+    setGuestMode(true);
+    setProfiles(profilesCache.profiles);
+    setActiveProfileId(profilesCache.activeProfileId);
+    setLinks(cache.links);
+    setSettings(cache.settings);
+    setSyncError(null);
+  }
+
+  function leaveGuestMode() {
+    setGuestModeEnabled(false);
+    setGuestMode(false);
+    setLinks([]);
+    setSettings(initial.settings);
+    setProfiles([createDefaultProfile()]);
+    setActiveProfileId(DEFAULT_PROFILE_ID);
+    setSyncError(null);
+  }
+
   const mode = useMemo(() => {
     if (!firebaseEnabled) return "Local mode";
     if (!authReady) return "Checking session";
+    if (guestMode) return "Local guest";
     if (!user) return "Login required";
     return syncing ? "Syncing" : "Cached + Firebase";
-  }, [authReady, syncing, user]);
+  }, [authReady, guestMode, syncing, user]);
 
   return {
     links,
@@ -600,6 +643,7 @@ export function useLinks() {
     loading,
     syncing,
     authReady,
+    guestMode,
     mode,
     syncError,
     user,
@@ -618,5 +662,7 @@ export function useLinks() {
     deleteTag,
     switchProfile,
     addProfile,
+    enterGuestMode,
+    leaveGuestMode,
   };
 }

@@ -1256,7 +1256,15 @@ function SettingsModal({
   );
 }
 
-function LoginScreen({ mode, syncError }: { mode: string; syncError: string | null }) {
+function LoginScreen({
+  mode,
+  syncError,
+  onGuest,
+}: {
+  mode: string;
+  syncError: string | null;
+  onGuest: () => void;
+}) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -1318,6 +1326,11 @@ function LoginScreen({ mode, syncError }: { mode: string; syncError: string | nu
           <Globe2 size={17} />
           Google
         </button>
+        <button className="secondary-action" type="button" disabled={busy} onClick={onGuest}>
+          <Database size={17} />
+          Continue as guest
+        </button>
+        <p className="guest-note">Guest bookmarks stay on this browser only.</p>
       </form>
     </main>
   );
@@ -1329,6 +1342,7 @@ export default function App() {
     settings,
     loading,
     authReady,
+    guestMode,
     mode,
     syncError,
     user,
@@ -1347,6 +1361,8 @@ export default function App() {
     deleteTag,
     switchProfile,
     addProfile,
+    enterGuestMode,
+    leaveGuestMode,
   } = useLinks();
   const [query, setQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState<
@@ -1468,11 +1484,11 @@ export default function App() {
   }
 
   if (firebaseEnabled && !authReady) {
-    return <LoginScreen mode={mode} syncError={syncError} />;
+    return <LoginScreen mode={mode} syncError={syncError} onGuest={enterGuestMode} />;
   }
 
-  if (firebaseEnabled && authReady && !user) {
-    return <LoginScreen mode={mode} syncError={syncError} />;
+  if (firebaseEnabled && authReady && !user && !guestMode) {
+    return <LoginScreen mode={mode} syncError={syncError} onGuest={enterGuestMode} />;
   }
 
   return (
@@ -1550,6 +1566,11 @@ export default function App() {
               <button className="avatar-button" onClick={signOutOfFirebase}>
                 <LogOut size={16} />
                 {user.displayName?.slice(0, 1) ?? "U"}
+              </button>
+            ) : guestMode ? (
+              <button className="toolbar-button" onClick={leaveGuestMode}>
+                <LogIn size={17} />
+                Sign in
               </button>
             ) : (
               <button className="toolbar-button" onClick={signInWithGoogle}>

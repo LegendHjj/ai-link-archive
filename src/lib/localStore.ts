@@ -4,11 +4,13 @@ import { DEFAULT_SETTINGS, buildSettingsFromLinks, normalizeLinks, normalizeSett
 
 export const DEFAULT_PROFILE_ID = "ai";
 export const DEFAULT_PROFILE_NAME = "AI";
+export const GUEST_STORAGE_ID = `local-guest:${"_".repeat(117)}`;
 
 const LEGACY_LINKS_KEY = "ai-link-archive:links:v1";
 const CACHE_KEY_V2 = "ai-link-archive:cache:v2";
 const CACHE_KEY = "ai-link-archive:cache:v3";
 const PROFILES_KEY = "ai-link-archive:profiles:v1";
+const GUEST_MODE_KEY = "ai-link-archive:guest-mode:v1";
 
 function cacheKey(userId?: string | null, profileId?: string | null) {
   if (userId && profileId) return `${CACHE_KEY}:${userId}:${profileId}`;
@@ -32,6 +34,15 @@ function readJson<T>(key: string): T | null {
   } catch {
     return null;
   }
+}
+
+export function isGuestModeEnabled() {
+  return window.localStorage.getItem(GUEST_MODE_KEY) === "1";
+}
+
+export function setGuestModeEnabled(enabled: boolean) {
+  if (enabled) window.localStorage.setItem(GUEST_MODE_KEY, "1");
+  else window.localStorage.removeItem(GUEST_MODE_KEY);
 }
 
 function readLegacyLinks() {

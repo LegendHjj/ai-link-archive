@@ -2,11 +2,14 @@ import { beforeEach, describe, expect, it } from "vitest";
 
 import type { LocalCache } from "../types";
 import {
+  GUEST_STORAGE_ID,
   createLocalCache,
+  isGuestModeEnabled,
   loadFirebaseProfileCache,
   loadFirebaseUserCache,
   loadLocalCache,
   saveLocalCache,
+  setGuestModeEnabled,
 } from "./localStore";
 
 class MemoryStorage {
@@ -94,5 +97,25 @@ describe("loadLocalCache", () => {
     expect(cache.links).toEqual([]);
     expect(cache.settings.categories).toEqual([]);
     expect(cache.settings.tags).toEqual([]);
+  });
+
+  it("keeps guest and Firebase caches isolated", () => {
+    expect(GUEST_STORAGE_ID.length).toBeGreaterThan(128);
+    saveLocalCache(cacheWithTitle("Guest record"), GUEST_STORAGE_ID, "ai");
+    saveLocalCache(cacheWithTitle("Cloud record"), "firebase-user-1", "ai");
+
+    expect(loadLocalCache(GUEST_STORAGE_ID, "ai").links[0].title).toBe("Guest record");
+    expect(loadLocalCache("firebase-user-1", "ai").links[0].title).toBe("Cloud record");
+    expect(loadLocalCache().links[0].title).not.toBe("Guest record");
+  });
+
+  it("remembers and clears guest mode without deleting its cache", () => {
+    saveLocalCache(cacheWithTitle("Guest record"), GUEST_STORAGE_ID, "ai");
+    setGuestModeEnabled(true);
+    expect(isGuestModeEnabled()).toBe(true);
+
+    setGuestModeEnabled(false);
+    expect(isGuestModeEnabled()).toBe(false);
+    expect(loadLocalCache(GUEST_STORAGE_ID, "ai").links[0].title).toBe("Guest record");
   });
 });

@@ -1865,6 +1865,13 @@ kbd {
   background: var(--panel-hover);
 }
 
+.login-card .guest-note {
+  margin: -6px 0 0;
+  color: var(--faint);
+  font-size: 12px;
+  text-align: center;
+}
+
 .modal textarea {
   min-height: 90px;
   resize: vertical;
