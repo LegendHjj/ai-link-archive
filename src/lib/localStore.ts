@@ -121,9 +121,10 @@ export function loadLocalCache(userId?: string | null, profileId?: string | null
     return createEmptyProfileCache(userId, profileId);
   }
 
+  const links = userId === GUEST_STORAGE_ID ? seedLinks : readLegacyLinks();
   return createLocalCache(
-    readLegacyLinks(),
-    buildSettingsFromLinks(readLegacyLinks()),
+    links,
+    buildSettingsFromLinks(links),
     userId,
     profileId,
   );

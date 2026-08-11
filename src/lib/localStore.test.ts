@@ -118,4 +118,15 @@ describe("loadLocalCache", () => {
     expect(isGuestModeEnabled()).toBe(false);
     expect(loadLocalCache(GUEST_STORAGE_ID, "ai").links[0].title).toBe("Guest record");
   });
+
+  it("does not initialize a guest cache from legacy anonymous links", () => {
+    localStorage.setItem(
+      "ai-link-archive:links:v1",
+      JSON.stringify(cacheWithTitle("Legacy private record").links),
+    );
+
+    expect(loadLocalCache(GUEST_STORAGE_ID, "ai").links).not.toMatchObject([
+      { title: "Legacy private record" },
+    ]);
+  });
 });
