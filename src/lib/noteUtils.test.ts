@@ -66,6 +66,21 @@ describe("filterLibraryItems", () => {
 
     expect(result.map((entry) => entry.id)).toEqual(["legacy-note"]);
   });
+
+  it("filters notes by category", () => {
+    const result = filterLibraryItems(
+      [note, legacyNote, item({ id: "project-note", type: "note", url: "", category: "Projects" })],
+      {
+        content: "notes",
+        category: "Projects",
+        status: "all",
+        query: "",
+        tag: null,
+      },
+    );
+
+    expect(result.map((entry) => entry.id)).toEqual(["project-note"]);
+  });
 });
 
 describe("notePreview", () => {

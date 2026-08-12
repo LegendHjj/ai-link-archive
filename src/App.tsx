@@ -439,15 +439,21 @@ function LinkGrid({
 
 function NoteGrid({
   notes,
+  selectedIds,
   activeId,
   onSelect,
+  onToggleSelect,
   onAddNote,
 }: {
   notes: LinkItem[];
+  selectedIds: string[];
   activeId: string | null;
   onSelect: (note: LinkItem) => void;
+  onToggleSelect: (id: string) => void;
   onAddNote: () => void;
 }) {
+  const selectedSet = new Set(selectedIds);
+
   return (
     <section className="notes-board" aria-label="Notes">
       <button className="quick-note-card" onClick={onAddNote}>
@@ -458,12 +464,16 @@ function NoteGrid({
       {notes.map((note) => (
         <article
           key={note.id}
-          className={`note-card ${activeId === note.id ? "focused" : ""}`}
+          className={`note-card ${activeId === note.id ? "focused" : ""} ${
+            selectedSet.has(note.id) ? "selected" : ""
+          }`}
           onClick={() => onSelect(note)}
           role="button"
           tabIndex={0}
           onKeyDown={(event) => {
-            if (event.key === "Enter" || event.key === " ") onSelect(note);
+            if (event.target === event.currentTarget && (event.key === "Enter" || event.key === " ")) {
+              onSelect(note);
+            }
           }}
         >
           <div className="note-card-topline">
@@ -471,9 +481,19 @@ function NoteGrid({
             <em className={`category-pill ${toneForCategory(note.category)}`}>
               {note.category}
             </em>
-            {note.favorite ? (
-              <Star size={16} fill="#f6bd2f" stroke="#f6bd2f" aria-label="Favorite" />
-            ) : null}
+            <span className="note-card-actions">
+              {note.favorite ? (
+                <Star size={16} fill="#f6bd2f" stroke="#f6bd2f" aria-label="Favorite" />
+              ) : null}
+              <label className="note-select" onClick={(event) => event.stopPropagation()}>
+                <input
+                  type="checkbox"
+                  aria-label={`Select ${note.title}`}
+                  checked={selectedSet.has(note.id)}
+                  onChange={() => onToggleSelect(note.id)}
+                />
+              </label>
+            </span>
           </div>
           <h3>{note.title}</h3>
           <p>{notePreview(note)}</p>
@@ -1402,6 +1422,9 @@ export default function App() {
       ? activeCategory
       : undefined;
   const selectedCount = selectedIds.length;
+  const noteCategories = settings.categories.filter((category) =>
+    links.some((link) => link.status !== "archived" && isNoteItem(link) && link.category === category),
+  );
   const collectionTitle =
     activeCategory === "Archived"
       ? "Archived"
@@ -1605,7 +1628,13 @@ export default function App() {
               }
             />
           </label>
-          <strong>{selectedCount} selected</strong>
+          <strong>
+            {selectedCount
+              ? `${selectedCount} selected`
+              : contentFilter === "notes"
+                ? "Select notes"
+                : "0 selected"}
+          </strong>
           <button
             disabled={!selectedCount}
             onClick={() =>
@@ -1667,17 +1696,55 @@ export default function App() {
 
         {loading ? (
           <div className="empty-state">Loading your library...</div>
-        ) : filteredLinks.length && contentFilter === "notes" ? (
-          <NoteGrid
-            notes={filteredLinks}
-            activeId={activeLink?.id ?? null}
-            onAddNote={() => openAdd("note")}
-            onSelect={(note) => {
-              setActiveId(note.id);
-              setDetailOpen(true);
-              setMobileSheetOpen(true);
-            }}
-          />
+        ) : contentFilter === "notes" ? (
+          <section className="notes-view">
+            <nav className="note-category-ribbon" aria-label="Filter notes by category">
+              <span>Category</span>
+              <button
+                className={activeCategory === "All Items" ? "active" : ""}
+                aria-pressed={activeCategory === "All Items"}
+                onClick={() => {
+                  setActiveCategory("All Items");
+                  setActiveTag(null);
+                  setSelectedIds([]);
+                }}
+              >
+                All categories
+              </button>
+              {noteCategories.map((category) => (
+                <button
+                  key={category}
+                  className={activeCategory === category ? "active" : ""}
+                  aria-pressed={activeCategory === category}
+                  onClick={() => {
+                    setActiveCategory(category);
+                    setActiveTag(null);
+                    setSelectedIds([]);
+                  }}
+                >
+                  {category}
+                </button>
+              ))}
+            </nav>
+            <NoteGrid
+              notes={filteredLinks}
+              selectedIds={selectedIds}
+              activeId={activeLink?.id ?? null}
+              onAddNote={() => openAdd("note")}
+              onSelect={(note) => {
+                setActiveId(note.id);
+                setDetailOpen(true);
+                setMobileSheetOpen(true);
+              }}
+              onToggleSelect={(id) =>
+                setSelectedIds((current) =>
+                  current.includes(id)
+                    ? current.filter((item) => item !== id)
+                    : [...current, id],
+                )
+              }
+            />
+          </section>
         ) : filteredLinks.length && viewMode === "grid" ? (
           <LinkGrid
             links={filteredLinks}
@@ -1724,16 +1791,10 @@ export default function App() {
           />
         ) : (
           <div className="empty-state">
-            {contentFilter === "notes" ? <NotebookPen size={32} /> : <Link2 size={32} />}
-            <h2>{contentFilter === "notes" ? "No notes here yet" : "Nothing matches this view"}</h2>
-            <p>
-              {contentFilter === "notes"
-                ? "Start with a thought, meeting takeaway, or idea you want to keep."
-                : "Save a link or loosen the current filters."}
-            </p>
-            <button onClick={() => openAdd(contentFilter === "notes" ? "note" : "link")}>
-              {contentFilter === "notes" ? "Create a note" : "Save a link"}
-            </button>
+            <Link2 size={32} />
+            <h2>Nothing matches this view</h2>
+            <p>Save a link or loosen the current filters.</p>
+            <button onClick={() => openAdd("link")}>Save a link</button>
           </div>
         )}
 

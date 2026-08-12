@@ -904,6 +904,57 @@ kbd {
   scrollbar-width: thin;
 }
 
+.notes-view {
+  display: grid;
+  min-height: 0;
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
+}
+
+.note-category-ribbon {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 20px;
+  border-bottom: 1px solid var(--line-soft);
+  overflow-x: auto;
+  background: var(--panel);
+  scrollbar-width: thin;
+}
+
+.note-category-ribbon > span {
+  margin-right: 4px;
+  color: var(--faint);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.note-category-ribbon button {
+  flex: 0 0 auto;
+  min-height: 32px;
+  padding: 0 11px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.note-category-ribbon button:hover {
+  background: var(--panel-hover);
+  color: var(--text);
+}
+
+.note-category-ribbon button.active {
+  border-color: rgba(99, 102, 241, 0.28);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
 .notes-board {
   display: grid;
   min-height: 0;
@@ -917,6 +968,10 @@ kbd {
     linear-gradient(rgba(99, 102, 241, 0.025), rgba(99, 102, 241, 0)),
     var(--panel);
   scrollbar-width: thin;
+}
+
+.notes-view .notes-board {
+  max-height: none;
 }
 
 .quick-note-card,
@@ -990,6 +1045,11 @@ kbd {
   box-shadow: 0 0 0 3px var(--accent-glow);
 }
 
+.note-card.selected:not(.focused) {
+  border-color: rgba(99, 102, 241, 0.42);
+  background: #faf9ff;
+}
+
 .note-card-topline,
 .note-card-footer {
   display: flex;
@@ -997,8 +1057,26 @@ kbd {
   gap: 8px;
 }
 
-.note-card-topline > svg {
+.note-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   margin-left: auto;
+}
+
+.note-select {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  cursor: pointer;
+}
+
+.note-select input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  cursor: pointer;
 }
 
 .note-card-icon {
@@ -2087,6 +2165,15 @@ kbd {
     grid-template-columns: 1fr;
     max-height: none;
     padding: 14px;
+  }
+
+  .notes-view {
+    overflow: visible;
+  }
+
+  .note-category-ribbon {
+    padding-right: 14px;
+    padding-left: 14px;
   }
 
   .quick-note-card,
